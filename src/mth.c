@@ -24,11 +24,11 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 	ip_ptr = (struct iphdr*)(packet + ETH_HLEN);
 
 	if ((ip_ptr->daddr & NETMASK) == NETWORK) {
-		host = (ip_ptr->daddr & ~NETMASK);
+		host = ip_ptr->daddr & ~NETMASK;
 		ips[__bswap_32(host)] += header->len;
 	}
 	else if ((ip_ptr->saddr & NETMASK) == NETWORK) {
-		host = (ip_ptr->saddr & ~NETMASK);
+		host = ip_ptr->saddr & ~NETMASK;
 		ips[__bswap_32(host)] += header->len;
 	}
 }
