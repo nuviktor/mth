@@ -19,7 +19,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
 	extern unsigned long ips[];
         const struct iphdr *ip_ptr;
-	u_int32_t host = NULL;
+	u_int32_t host;
 
 	ip_ptr = (struct iphdr*)(packet + ETH_HLEN);
 
@@ -70,19 +70,17 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
 
-	for (i = 0; i < NHOSTS; i++) {
+	for (i = 0; i < NHOSTS; i++)
 		ips[i] = 0;
-	}
 
         pcap_loop(handle, 512, packet_cb, NULL);
 
         pcap_freecode(&fp);
         pcap_close(handle);
 
-	for (i = 0; i < NHOSTS; i++) {
+	for (i = 0; i < NHOSTS; i++)
 		if (ips[i] != 0)
 			printf("Host %d: %lu bytes\n", i, ips[i]);
-	}
 
         return EXIT_SUCCESS;
 }
