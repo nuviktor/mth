@@ -44,7 +44,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 		ips[ntohl(host)] += header->len;
 	}
 
-	// Same with the destination address.
+	// Same with the source address.
 	if ((ip_ptr->saddr & NETMASK) == NETWORK) {
 		host = ip_ptr->saddr & ~NETMASK;
 		ips[ntohl(host)] += header->len;
