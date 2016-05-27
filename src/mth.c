@@ -1,5 +1,4 @@
 #include <arpa/inet.h>
-#include <byteswap.h>
 #include <net/ethernet.h>
 #include <netinet/ip.h>
 #include <pcap.h>
