@@ -12,7 +12,7 @@
 /*
   Completely hacky and not tied to the netmask at all (which it should be).
   Will be improved when I decide if a hash table is the best way to implement it,
-  and how to use it if I do.
+  and learn how to use it if I do.
 */
 #define NHOSTS 256
 
@@ -54,7 +54,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 int main(int argc, char *argv[])
 {
 	int i;
-	int mth = 1;
+	int mth;
 
 	u_int32_t ip;
 	char ipstr[INET_ADDRSTRLEN];
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	  Find the host number which used the most bytes, ignoring the network and broadcast
 	  addresses.
 	*/
-	for (i = 1; i < (NHOSTS-1); i++)
+	for (i = 1, mth = 1; i < (NHOSTS-1); i++)
 		if (ips[i] > ips[mth])
 			mth = i;
 
