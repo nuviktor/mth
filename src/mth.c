@@ -1,8 +1,6 @@
 #include <arpa/inet.h>
 #include <byteswap.h>
-#include <linux/if_ether.h>
 #include <net/ethernet.h>
-#include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <pcap.h>
 #include <stdio.h>
@@ -11,8 +9,14 @@
 #define NETWORK 0x0001a8c0 // 192.168.1.0
 #define NETMASK 0x00ffffff // 255.255.255.0
 
+/*
+  Completely hacky and not tied to the netmask at all (which it should be).
+  Will be improved when I decide if a hash table is the best way to implement it,
+  and how to use it if I do.
+*/
 #define NHOSTS 256
 
+// Define an array which will hold the number of bytes transferred by different hosts.
 unsigned long ips[NHOSTS];
 
 void
@@ -22,13 +26,25 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 	const struct iphdr *ip_ptr;
 	u_int32_t host;
 
+	/*
+	  Skip past the Ethernet header and extract the IP header by casting with the
+	  iphdr struct borrowed from netinet/ip.h.
+	*/
 	ip_ptr = (struct iphdr*)(packet + ETH_HLEN);
 
+	/*
+	  Get the destination address, then bitwise AND it with the netmask to check if it's
+	  in the network of hosts we want to track.
+	*/
 	if ((ip_ptr->daddr & NETMASK) == NETWORK) {
+		// Get the host number.
 		host = ip_ptr->daddr & ~NETMASK;
+
+		// The host number is in big-endian so we convert here.
 		ips[ntohl(host)] += header->len;
 	}
 
+	// Same with the destination address.
 	if ((ip_ptr->saddr & NETMASK) == NETWORK) {
 		host = ip_ptr->saddr & ~NETMASK;
 		ips[ntohl(host)] += header->len;
@@ -54,6 +70,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "No argument supplied\n");
 		exit(EXIT_FAILURE);
 	}
+
+	// Setup pcap, sanity check the filter expression, compile it and set it.
 
 	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
 	if (handle == NULL) {
@@ -84,11 +102,18 @@ int main(int argc, char *argv[])
 	pcap_freecode(&fp);
 	pcap_close(handle);
 
-	// Ignore the network and broadcast addresses
+	/*
+	  Find the host number which used the most bytes, ignoring the network and broadcast
+	  addresses.
+	*/
 	for (i = 1; i < (NHOSTS-1); i++)
 		if (ips[i] > ips[mth])
 			mth = i;
 
+	/*
+	  Get the full IP address from the host number and network address, and translate it
+	  into human-readable form.
+	*/
 	ip = htonl((u_int32_t) mth) | NETWORK;
 	inet_ntop(AF_INET, &ip, ipstr, INET_ADDRSTRLEN);
 
