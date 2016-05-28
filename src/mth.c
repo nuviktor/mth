@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 	  Get the full IP address from the host number and network address, and translate it
 	  into human-readable form.
 	*/
-	ip = htonl((u_int32_t) mth) | NETWORK;
+	ip = htonl(mth) | NETWORK;
 	inet_ntop(AF_INET, &ip, ipstr, INET_ADDRSTRLEN);
 
 	printf("%s\n", ipstr);
