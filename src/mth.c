@@ -21,7 +21,6 @@ unsigned long ips[NHOSTS];
 void
 packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
-	extern unsigned long ips[];
 	const struct iphdr *ip_ptr;
 	int host;
 
