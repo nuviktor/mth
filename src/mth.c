@@ -23,7 +23,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
 	extern unsigned long ips[];
 	const struct iphdr *ip_ptr;
-	u_int32_t host;
+	int host;
 
 	/*
 	  Skip past the Ethernet header and extract the IP header by casting with the
