@@ -4,16 +4,29 @@
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#define NETWORK 0x0001a8c0 // 192.168.1.0
-#define NETMASK 0x00ffffff // 255.255.255.0
+#define DEFAULT_NETWORK 0x0001a8c0 // 192.168.1.0
+#define DEFAULT_MASKBITS 24 // 255.255.255.0
+#define DEFAULT_INTERFACE "br-lan"
 
-/*
-  Completely hacky and not tied to the netmask at all (which it should be).
-  Will be improved when I decide if a hash table is the best way to implement it,
-  and learn how to use it if I do.
-*/
-#define NHOSTS 256
+#define MASKBITS_MIN 16
+#define MASKBITS_MAX 30
+
+// The mask must have at least 16 bits which means a maximum of 2^(32-16) = 65536 hosts.
+#define NHOSTS 65536
+
+in_addr_t network;
+in_addr_t mask;
+
+int addr_in_net(in_addr_t addr)
+{
+	if ((addr & mask) == network) {
+		return 1;
+	}
+
+	return 0;
+}
 
 // Define an array which will hold the number of bytes transferred by different hosts.
 unsigned long ips[NHOSTS];
@@ -30,55 +43,92 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 	*/
 	ip_ptr = (struct iphdr*)(packet + ETH_HLEN);
 
-	/*
-	  Get the destination address, then bitwise AND it with the netmask to check if it's
-	  in the network of hosts we want to track.
-	*/
-	if ((ip_ptr->daddr & NETMASK) == NETWORK) {
+	if (addr_in_net(ip_ptr->daddr) && !addr_in_net(ip_ptr->saddr)) {
 		// Get the host number.
-		host = ip_ptr->daddr & ~NETMASK;
+		host = ip_ptr->daddr & ~mask;
 
 		// The host number is in big-endian so we convert here.
 		ips[ntohl(host)] += header->len;
 	}
 
-	// Same with the source address.
-	if ((ip_ptr->saddr & NETMASK) == NETWORK) {
-		host = ip_ptr->saddr & ~NETMASK;
+	if (addr_in_net(ip_ptr->saddr) && !addr_in_net(ip_ptr->daddr)) {
+		host = ip_ptr->saddr & ~mask;
 		ips[ntohl(host)] += header->len;
 	}
 }
 
+in_addr_t makemask(int bits)
+{
+	in_addr_t mask = 1;
+	return (mask << bits) - 1;
+}
+
 int main(int argc, char *argv[])
 {
-	int i;
-	int mth;
+	int i, mth, opt;
 
-	u_int32_t ip;
+	int maskbits = DEFAULT_MASKBITS;
+	char *interface = DEFAULT_INTERFACE;
+
+	in_addr_t ip;
 	char ipstr[INET_ADDRSTRLEN];
 
-	char *dev = argv[1];
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 
 	struct bpf_program fp;
 	char filter_exp[] = "ip";
 
-	if (argc < 2) {
-		fprintf(stderr, "No argument supplied\n");
+	network = DEFAULT_NETWORK;
+
+	while ((opt = getopt(argc, argv, "i:n:m:")) != -1) {
+		switch (opt) {
+		case 'n':
+			if (!inet_pton(AF_INET, optarg, &network)) {
+				fprintf(stderr, "Could not parse network address\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'm':
+			maskbits = atoi(optarg);
+			break;
+		case 'i':
+			interface = optarg;
+			break;
+		default:
+			fprintf(stderr, "Uhhh...\n");
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+
+	if (maskbits < MASKBITS_MIN) {
+		fprintf(stderr, "Mask must have at least %d bits\n", MASKBITS_MIN);
 		exit(EXIT_FAILURE);
 	}
 
+	if (maskbits > MASKBITS_MAX) {
+		fprintf(stderr, "Mask must be under %d bits\n", MASKBITS_MAX + 1);
+		exit(EXIT_FAILURE);
+	}
+
+	mask = makemask(maskbits);
+	network = network & mask;
+
+//	printf("Network: %02x\n", network);
+//	printf("Interface: %s\n", interface);
+//	printf("Mask: %02x\n", makemask(maskbits));
+
 	// Setup pcap, sanity check the filter expression, compile it and set it.
 
-	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+	handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
 	if (handle == NULL) {
-		fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
+		fprintf(stderr, "Couldn't open device %s: %s\n", interface, errbuf);
 		exit(EXIT_FAILURE);
 	}
 
 	if (pcap_datalink(handle) != DLT_EN10MB) {
-		fprintf(stderr, "Device %s doesn't provide Ethernet headers\n", dev);
+		fprintf(stderr, "Device %s doesn't provide Ethernet headers\n", interface);
 		exit(EXIT_FAILURE);
 	}
 
@@ -112,7 +162,7 @@ int main(int argc, char *argv[])
 	  Get the full IP address from the host number and network address, and translate it
 	  into human-readable form.
 	*/
-	ip = htonl(mth) | NETWORK;
+	ip = htonl(mth) | network;
 	inet_ntop(AF_INET, &ip, ipstr, INET_ADDRSTRLEN);
 
 	printf("%s\n", ipstr);
