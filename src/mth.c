@@ -30,9 +30,8 @@ in_addr_t makemask(int bits)
 
 int ainnet(in_addr_t addr)
 {
-	if ((addr & mask) == network) {
+	if ((addr & mask) == network)
 		return 1;
-	}
 
 	return 0;
 }
