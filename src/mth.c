@@ -16,10 +16,19 @@
 // The mask must have at least 16 bits which means a maximum of 2^(32-16) = 65536 hosts.
 #define NHOSTS 65536
 
+// Define an array which will hold the number of bytes transferred by different hosts.
+unsigned long ips[NHOSTS];
+
 in_addr_t network;
 in_addr_t mask;
 
-int addr_in_net(in_addr_t addr)
+in_addr_t makemask(int bits)
+{
+	in_addr_t mask = 1;
+	return (mask << bits) - 1;
+}
+
+int ainnet(in_addr_t addr)
 {
 	if ((addr & mask) == network) {
 		return 1;
@@ -27,9 +36,6 @@ int addr_in_net(in_addr_t addr)
 
 	return 0;
 }
-
-// Define an array which will hold the number of bytes transferred by different hosts.
-unsigned long ips[NHOSTS];
 
 void
 packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
@@ -43,7 +49,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 	*/
 	ip_ptr = (struct iphdr*)(packet + ETH_HLEN);
 
-	if (addr_in_net(ip_ptr->daddr) && !addr_in_net(ip_ptr->saddr)) {
+	if (ainnet(ip_ptr->daddr) && !ainnet(ip_ptr->saddr)) {
 		// Get the host number.
 		host = ip_ptr->daddr & ~mask;
 
@@ -51,16 +57,10 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 		ips[ntohl(host)] += header->len;
 	}
 
-	if (addr_in_net(ip_ptr->saddr) && !addr_in_net(ip_ptr->daddr)) {
+	if (ainnet(ip_ptr->saddr) && !ainnet(ip_ptr->daddr)) {
 		host = ip_ptr->saddr & ~mask;
 		ips[ntohl(host)] += header->len;
 	}
-}
-
-in_addr_t makemask(int bits)
-{
-	in_addr_t mask = 1;
-	return (mask << bits) - 1;
 }
 
 int main(int argc, char *argv[])
@@ -112,12 +112,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	// Make a mask from the number of bits and normalise the network address.
 	mask = makemask(maskbits);
 	network = network & mask;
-
-//	printf("Network: %02x\n", network);
-//	printf("Interface: %s\n", interface);
-//	printf("Mask: %02x\n", makemask(maskbits));
 
 	// Setup pcap, sanity check the filter expression, compile it and set it.
 
