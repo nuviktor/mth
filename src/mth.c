@@ -16,13 +16,22 @@
 // The mask must have at least 16 bits which means a maximum of 2^(32-16) = 65536 hosts.
 #define NHOSTS 65536
 
+// The number of packets to loop over before finishing.
+#define PACKETS 512
+
+// The number of packets to wait until printing a debug message.
+#define DEBUG_PACKETS 64
+
 // Define an array which will hold the number of bytes transferred by different hosts.
 unsigned long ips[NHOSTS];
 
-in_addr_t network;
+in_addr_t network = DEFAULT_NETWORK;
 in_addr_t mask;
 
-in_addr_t makemask(int bits)
+int verbose = 0;
+unsigned int packets = 0;
+
+in_addr_t makemask(signed int bits)
 {
 	in_addr_t mask = 1;
 	return (mask << bits) - 1;
@@ -40,7 +49,7 @@ void
 packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
 	const struct iphdr *ip_ptr;
-	int host;
+	unsigned int host;
 
 	/*
 	  Skip past the Ethernet header and extract the IP header by casting with the
@@ -59,13 +68,18 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 		host = ip_ptr->saddr & ~mask;
 		ips[ntohl(host)] += header->len;
 	}
+
+	if (verbose && ((++packets % DEBUG_PACKETS) == 0)) {
+		fprintf(stderr, "%u packets seen\n", packets);
+	}
 }
 
 int main(int argc, char *argv[])
 {
-	int i, mth, opt;
+	int opt;
+	unsigned int n, mth;
 
-	int maskbits = DEFAULT_MASKBITS;
+	signed int maskbits = DEFAULT_MASKBITS;
 	char *interface = DEFAULT_INTERFACE;
 
 	in_addr_t ip;
@@ -77,12 +91,10 @@ int main(int argc, char *argv[])
 	struct bpf_program fp;
 	char filter_exp[] = "ip";
 
-	network = DEFAULT_NETWORK;
-
-	while ((opt = getopt(argc, argv, "i:n:m:")) != -1) {
+	while ((opt = getopt(argc, argv, "i:n:m:v")) != -1) {
 		switch (opt) {
 		case 'n':
-			if (!inet_pton(AF_INET, optarg, &network)) {
+			if (inet_pton(AF_INET, optarg, &network) != 1) {
 				fprintf(stderr, "Could not parse network address\n");
 				exit(EXIT_FAILURE);
 			}
@@ -92,6 +104,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			interface = optarg;
+			break;
+		case 'v':
+			verbose = 1;
 			break;
 		default:
 			fprintf(stderr, "Usage: %s [-i INTERFACE] [-n NETWORK] [-m MASKBITS] [-v]\n", argv[0]);
@@ -113,6 +128,10 @@ int main(int argc, char *argv[])
 	// Make a mask from the number of bits and normalise the network address.
 	mask = makemask(maskbits);
 	network &= mask;
+
+	if (verbose)
+		fprintf(stderr, "interface %s\nnetwork %02x\nmask %02x\n",
+		        interface, network, mask);
 
 	// Setup pcap, sanity check the filter expression, compile it and set it.
 
@@ -137,10 +156,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	for (i = 0; i < NHOSTS; i++)
-		ips[i] = 0;
+	for (n = 0; n < NHOSTS; n++)
+		ips[n] = 0;
 
-	pcap_loop(handle, 512, packet_cb, NULL);
+	pcap_loop(handle, PACKETS, packet_cb, NULL);
 
 	pcap_freecode(&fp);
 	pcap_close(handle);
@@ -149,9 +168,9 @@ int main(int argc, char *argv[])
 	  Find the host number which used the most bytes, ignoring the network and broadcast
 	  addresses.
 	*/
-	for (i = 1, mth = 1; i < (NHOSTS-1); i++)
-		if (ips[i] > ips[mth])
-			mth = i;
+	for (n = 1, mth = 1; n < (NHOSTS-1); n++)
+		if (ips[n] > ips[mth])
+			mth = n;
 
 	/*
 	  Get the full IP address from the host number and network address, and translate it
