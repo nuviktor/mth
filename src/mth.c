@@ -31,7 +31,7 @@ in_addr_t mask;
 int verbose = 0;
 unsigned int packets = 0;
 
-in_addr_t makemask(signed int bits)
+in_addr_t makemask(unsigned int bits)
 {
 	in_addr_t mask = 1;
 	return (mask << bits) - 1;
