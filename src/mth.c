@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	int opt;
 	unsigned int n, mth;
 
-	signed int maskbits = DEFAULT_MASKBITS;
+	unsigned int maskbits = DEFAULT_MASKBITS;
 	char *interface = DEFAULT_INTERFACE;
 
 	in_addr_t ip;
