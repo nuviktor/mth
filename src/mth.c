@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 			interface = optarg;
 			break;
 		default:
-			fprintf(stderr, "Usage: %s [-i INTERFACE] [-n NETWORK] [-m MASKBITS]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [-i INTERFACE] [-n NETWORK] [-m MASKBITS] [-v]\n", argv[0]);
 			exit(EXIT_FAILURE);
 			break;
 		}
