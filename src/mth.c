@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 			interface = optarg;
 			break;
 		default:
-			fprintf(stderr, "Uhhh...\n");
+			fprintf(stderr, "Usage: %s [-i INTERFACE] [-n NETWORK] [-m MASKBITS]\n", argv[0]);
 			exit(EXIT_FAILURE);
 			break;
 		}
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
 	// Make a mask from the number of bits and normalise the network address.
 	mask = makemask(maskbits);
-	network = network & mask;
+	network &= mask;
 
 	// Setup pcap, sanity check the filter expression, compile it and set it.
 
