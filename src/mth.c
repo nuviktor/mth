@@ -55,8 +55,7 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 		// The host number is in big-endian so we convert here.
 		ips[ntohl(host)] += header->len;
 	}
-
-	if (ainnet(ip_ptr->saddr) && !ainnet(ip_ptr->daddr)) {
+	else if (ainnet(ip_ptr->saddr) && !ainnet(ip_ptr->daddr)) {
 		host = ip_ptr->saddr & ~mask;
 		ips[ntohl(host)] += header->len;
 	}
