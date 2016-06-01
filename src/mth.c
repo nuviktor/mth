@@ -126,11 +126,11 @@ int main(int argc, char *argv[])
 
 	// Make a mask from the number of bits and normalise the network address.
 	netmask = makemask(maskbits);
-	network &= mask;
+	network &= netmask;
 
 	if (verbose)
 		fprintf(stderr, "interface %s\nnetwork %02x\nmask %02x\n",
-		        interface, network, mask);
+		        interface, network, netmask);
 
 	// Setup pcap, sanity check the filter expression, compile it and set it.
 
