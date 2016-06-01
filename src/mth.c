@@ -26,7 +26,7 @@
 unsigned long ips[NHOSTS];
 
 in_addr_t network = DEFAULT_NETWORK;
-in_addr_t mask;
+in_addr_t netmask;
 
 int verbose = 0;
 unsigned int packets = 0;
@@ -39,7 +39,7 @@ in_addr_t makemask(unsigned int bits)
 
 int ainnet(in_addr_t addr)
 {
-	if ((addr & mask) == network)
+	if ((addr & netmask) == network)
 		return 1;
 
 	return 0;
@@ -59,13 +59,13 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 
 	if (ainnet(ip_ptr->daddr) && !ainnet(ip_ptr->saddr)) {
 		// Get the host number.
-		host = ip_ptr->daddr & ~mask;
+		host = ip_ptr->daddr & ~netmask;
 
 		// The host number is in big-endian so we convert here.
 		ips[ntohl(host)] += header->len;
 	}
 	else if (ainnet(ip_ptr->saddr) && !ainnet(ip_ptr->daddr)) {
-		host = ip_ptr->saddr & ~mask;
+		host = ip_ptr->saddr & ~netmask;
 		ips[ntohl(host)] += header->len;
 	}
 
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Make a mask from the number of bits and normalise the network address.
-	mask = makemask(maskbits);
+	netmask = makemask(maskbits);
 	network &= mask;
 
 	if (verbose)
