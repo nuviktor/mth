@@ -69,9 +69,8 @@ packet_cb(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 		ips[ntohl(host)] += header->len;
 	}
 
-	if (verbose && ((++packets % DEBUG_PACKETS) == 0)) {
+	if (verbose && ((++packets % DEBUG_PACKETS) == 0))
 		fprintf(stderr, "%u packets seen\n", packets);
-	}
 }
 
 int main(int argc, char *argv[])
