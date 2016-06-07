@@ -13,7 +13,6 @@
 #define MASKBITS_MIN 16
 #define MASKBITS_MAX 30
 
-// The mask must have at least 16 bits which means a maximum of 2^(32-16) = 65536 hosts.
 #define NHOSTS (1 << (32 - MASKBITS_MIN))
 
 // The number of packets to loop over before finishing.
